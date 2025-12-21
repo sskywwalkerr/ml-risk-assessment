@@ -117,4 +117,3 @@ class DataLoader(IDataLoader):
                 df = df.sample(n=size, random_state=42)
         print(f"Загружено: {len(df):,} строк, {len(df.columns)} колонок")
         return df
-        return df
