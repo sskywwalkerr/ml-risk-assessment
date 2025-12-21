@@ -1,0 +1,76 @@
+paths:
+  data_raw: "data/dataset"
+  data_processed: "data/processed"
+  data_financial: "data/financial"
+  models: "models"
+  results: "results"
+
+data:
+  use_all: true
+  sample_size: null
+  format: "csv"
+  target_column: "Label"
+  preprocessing:
+    test_size: 0.2
+    validation_size: 0.1
+    random_state: 42
+    handle_inf: true
+    fill_na_method: "median"
+    remove_duplicates: true
+    scaling_method: "robust"
+
+features:
+  create_ratios: true
+  create_statistical: true
+  create_temporal: true
+  create_anomaly_scores: true
+  feature_selection: false
+
+  detection_time_multiplier:
+    fast: 0.6
+    medium: 1.2
+    slow: 2.5
+  company_size_multiplier:
+    small: 0.5
+    medium: 1.0
+    large: 2.0
+
+models:
+  use_all: true
+  sample_size: null
+  random_forest:
+    enabled: true
+    task: "both"
+    classification:
+      n_estimators: 300     # количество деревьев в лесу
+      max_depth: 25         # максимальная глубина деревьев
+      min_samples_split: 2  # минимальное количество образцов для разделения узла
+      min_samples_leaf: 1   # минимальное количество образцов в листе
+      n_jobs: -1            # параллельное выполнение
+      random_state: 42      # для воспроизводимости результатов
+    regression:
+      n_estimators: 300
+      max_depth: 22
+      min_samples_split: 2
+      min_samples_leaf: 1
+      n_jobs: -1
+      random_state: 42
+
+gpu:
+  device_id: cuda:0
+  multi_gpu: false
+  memory_fraction: 0.95
+  allow_growth: true
+
+training:
+  use_cv: false
+  save_best_only: true
+
+evaluation:
+  classification_metrics:
+    - accuracy
+    - f1_score
+  regression_metrics:
+    - mae
+    - rmse
+    - r2
