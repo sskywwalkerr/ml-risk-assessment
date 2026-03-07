@@ -1,9 +1,12 @@
 from dataclasses import dataclass
+
 from app.domain.enums import AttackCategory
+
 
 @dataclass(frozen=True)
 class Attack:
     """Результат классификации атаки."""
+
     attack_type: str
     category: AttackCategory
     probability: float
