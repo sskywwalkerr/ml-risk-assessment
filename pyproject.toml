@@ -1,0 +1,39 @@
+[project]
+name = "ml-risk-assessment"
+version = "0.1.0"
+description = ""
+authors = [
+    {name = "Sky"}
+]
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "pandas (>=3.0.1,<4.0.0)"
+]
+
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[dependency-groups]
+lint = [
+    "black (>=26.3.0,<27.0.0)",
+    "ruff (>=0.15.5,<0.16.0)",
+    "mypy (>=1.19.1,<2.0.0)",
+    "pre-commit (>=4.5.1,<5.0.0)"
+]
+[tool.poetry]
+package-mode = false
+
+[tool.ruff]
+line-length = 88
+target-version = "py313"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "UP", "B", "C4", "SIM"]
+ignore = ["E501"]
+
+[tool.black]
+line-length = 88
+target-version = ['py313']
