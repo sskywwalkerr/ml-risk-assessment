@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from app.domain.enums import AttackCategory
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class Attack:
     """Результат классификации атаки."""
 
