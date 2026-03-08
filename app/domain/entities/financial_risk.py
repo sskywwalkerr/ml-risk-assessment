@@ -21,22 +21,16 @@ class FinancialRisk:
     risk_level: RiskLevel
 
     @property
-    def total_loss(self) -> float:
-        """Ожидание общей потери."""
-        base = (
-            self.direct_loss
-            + self.indirect_loss
-            + self.reputation_loss
-            + self.regulatory_fine
-        )
-        return round(base * self.intensity_multiplier * self.probability, 2)
-
-    @property
     def impact(self) -> float:
-        """Максимально возможный ущерб"""
+        """Суммарный базовый ущерб до применения множителей."""
         return (
             self.direct_loss
             + self.indirect_loss
             + self.reputation_loss
             + self.regulatory_fine
         )
+
+    @property
+    def total_loss(self) -> float:
+        """Итоговые потери по формуле ALE."""
+        return round(self.impact * self.intensity_multiplier * self.probability, 2)

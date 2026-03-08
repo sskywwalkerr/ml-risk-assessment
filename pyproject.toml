@@ -8,7 +8,8 @@ authors = [
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
-    "pandas (>=3.0.1,<4.0.0)"
+    "pandas (>=3.0.1,<4.0.0)",
+    "scikit-learn (>=1.8.0,<2.0.0)"
 ]
 
 
@@ -37,3 +38,7 @@ ignore = ["E501"]
 [tool.black]
 line-length = 88
 target-version = ['py313']
+
+[[tool.mypy.overrides]]
+module = "sklearn.*"
+ignore_missing_imports = true

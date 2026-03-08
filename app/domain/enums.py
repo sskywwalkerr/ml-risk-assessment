@@ -1,15 +1,15 @@
-from enum import Enum, StrEnum
+from enum import StrEnum
 
 
-class RiskLevel(Enum):
-    LOW = "low"
-    MEDIUM = "medium"
-    HIGH = "high"
-    CRITICAL = "critical"
+class RiskLevel(StrEnum):
+    LOW = "LOW"
+    MEDIUM = "MEDIUM"
+    HIGH = "HIGH"
+    CRITICAL = "CRITICAL"
 
 
 class AttackCategory(StrEnum):
-    BENIGN = "benign"
+    BENIGN = "BenignTraffic"
     DDOS = "DDoS"
     DOS = "DoS"
     RECON = "Recon"
