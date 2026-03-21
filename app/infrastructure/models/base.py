@@ -32,6 +32,7 @@ class BaseModel(IExplainableModel):
         y_val: np.ndarray | None = None,
     ) -> TrainResult:
         """Строит и обучает модель."""
+
         self._model = self._build()
         self._fit(x_train, y_train, x_val, y_val)
         return TrainResult()
