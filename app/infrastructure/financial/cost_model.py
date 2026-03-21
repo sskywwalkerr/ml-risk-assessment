@@ -1,41 +1,29 @@
-"""Базовые стоимости потерь по категориям атак CICIoT2023.
-
-Источники:
-  [1] IBM Cost of Data Breach Report 2024
-      https://ibm.com/reports/data-breach
-  [2] Verizon Data Breach Investigations Report 2024
-      https://verizon.com/business/resources/reports/dbir
-  [3] Zayo DDoS Insights Report 2023
-      https://zayo.com/resources/ddos-insights-report
-  [4] Sophos State of Ransomware 2024
-      https://sophos.com/en-us/whitepaper/state-of-ransomware
-
-Структура потерь (% от total, методология IBM [1]):
-  direct_loss      40% — восстановление систем, IR-команда
-  indirect_loss    30% — простой сервисов, потеря клиентов
-  reputation_loss  15% — долгосрочный репутационный ущерб
-  regulatory_fine  15% — штрафы GDPR (до 4% оборота) / HIPAA
-"""
-
-# Базовые стоимости по категориям атак (USD)
 BASE_COSTS: dict[str, float] = {
-    # Benign - нет потерь
+    # BenignTraffic: потерь нет
     "BenignTraffic": 0.0,
-    # DDoS: $6,000/мин × 68 мин средней атаки [3]
-    "DDoS": 408_000.0,
-    # DoS: [3] H1 2024 average
-    "DoS": 270_000.0,
-    # Mirai/Botnet: Sophos 2024 ransomware/botnet average [4]
-    "Mirai": 5_130_000.0,
-    # BruteForce: IBM 2024 — stolen credentials vector [1]
-    "BruteForce": 4_810_000.0,
-    # Web-based: IBM 2024 — web attack vector average [1]
-    # $173/запись × ~3,750 средних записей
-    "Web-based": 650_000.0,
-    # Recon: прямой ущерб минимален — только разведка
-    "Recon": 50_000.0,
-    # Spoofing: Verizon DBIR 2024 — MITM/spoofing incidents [2]
-    "Spoofing": 1_200_000.0,
+    # DDoS: $408,000 * 92.66 = 37,805,280 ₽
+    # Источник [3]: $6,000/мин * 68 мин (средняя атака 2023)
+    "DDoS": 37_805_280.0,
+    # DoS: $270,000 * 92.66 = 25,018,200 ₽
+    # Источник [4]: $6,000/мин * 45 мин (H1 2024)
+    "DoS": 25_018_200.0,
+    # Mirai/Botnet: $5,130,000 * 92.66 = 475,345,800 ₽
+    # Источник [5]: средние потери от botnet/ransomware атаки
+    "Mirai": 475_345_800.0,
+    # BruteForce: $4,810,000 * 92.66 = 445,693,600 ₽
+    # Источник [1]: stolen credentials vector, среднее $4.81M
+    # Примечание: 292 дня — рекордное время обнаружения среди всех векторов [1]
+    "BruteForce": 445_693_600.0,
+    # Web-based: $650,000 * 92.66 = 60,229,000 ₽
+    # Источник [1]: $173/запись * ~3,750 записей (типичная веб-атака)
+    "Web-based": 60_229_000.0,
+    # Recon: $50,000 * 92.66 = 4,633,000 ₽
+    # Источник: Positive Technologies — Актуальные киберугрозы 2023-2024
+    # ptsecurity.com/ru-ru/research/analytics — прямой ущерб от разведки минимален
+    "Recon": 4_633_000.0,
+    # Spoofing: $1,200,000 * 92.66 = 111,192,000 ₽
+    # Источник [2]: MITM/ARP-spoofing инциденты, Verizon DBIR 2024
+    "Spoofing": 111_192_000.0,
 }
 
 # Доли компонентов потерь (IBM methodology [1])
