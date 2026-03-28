@@ -98,7 +98,7 @@ class Pipeline:
         # Все финансовые метки из очищенного DataFrame
         fin = df[fin_col].values
 
-        # Нарезаем по тем же индексам, что preprocessor использовал для x и y
+        # Нарезает по тем же индексам, что preprocessor использовал для x и y
         y_fin_train = fin[preprocessor.train_idx]
         y_fin_val = fin[preprocessor.val_idx]
         y_fin_test = fin[preprocessor.test_idx]
