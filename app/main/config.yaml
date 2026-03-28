@@ -1,0 +1,123 @@
+app:
+  debug: false
+
+data:
+  path: "data/raw"
+  sample_size: null
+  target_column: "label"
+
+preprocessing:
+  test_size: 0.2
+  val_size: 0.125          # 12.5% от оставшихся -> итого 70/10/20
+  random_state: 42
+  nan_threshold: 0.5       # Удалить строки где >50% числовых колонок - NaN
+
+models:
+  save_path: "models"
+
+  random_forest:
+    classification:
+      n_estimators: 200 # деревья
+      max_depth: 20 # предел глубины дерева
+      min_samples_split: 5 # минимальное количество объектов, необходимое для того, чтобы узел дерева мог разделиться на два дочерних
+      n_jobs: -1 # Использование ядер процессора
+      random_state: 42 # Фиксация случайности
+      class_weight: "balanced" # баланс для редких классов
+    regression:
+      n_estimators: 200
+      max_depth: 20
+      min_samples_split: 5
+      n_jobs: -1
+      random_state: 42
+
+  xgboost:
+    classification:
+      n_estimators: 300
+      max_depth: 8
+      learning_rate: 0.05 # Скорость обучения (шаг градиента), меньше лучше результат
+      subsample: 0.8 # Доля данных для обучения одного дерева
+      colsample_bytree: 0.8 # Доля признаков (колонок) для одного дерева, лучшие признаки только из 80%
+      eval_metric: "mlogloss" # Метрика качества, для более 2х классов
+      n_jobs: -1 # Параллелизм
+      random_state: 42
+      verbosity: 0 # Отчеты
+    regression:
+      n_estimators: 300
+      max_depth: 8
+      learning_rate: 0.05
+      subsample: 0.8
+      colsample_bytree: 0.8
+      eval_metric: "rmse" # Среднеквадратичная ошибка
+      n_jobs: -1
+      random_state: 42
+      verbosity: 0
+
+  lightgbm:
+    classification:
+      n_estimators: 300
+      max_depth: 8
+      learning_rate: 0.05
+      subsample: 0.8
+      colsample_bytree: 0.8
+      class_weight: "balanced"
+      n_jobs: -1
+      random_state: 42
+      verbose: -1
+    regression:
+      n_estimators: 300
+      max_depth: 8
+      learning_rate: 0.05
+      subsample: 0.8
+      colsample_bytree: 0.8
+      n_jobs: -1
+      random_state: 42
+      verbose: -1
+
+financial:
+  currency: "RUB"
+  usd_to_rub: 92.66
+
+  base_costs_rub:
+    BenignTraffic: 0
+    DDoS: 37_805_280       # $408k: $6k/мин * 68 мин
+    DoS: 25_018_200        # $270k: $6k/мин * 45 мин
+    Mirai: 475_345_800     # $5.13M: botnet/ransomware avg
+    BruteForce: 445_693_600  # $4.81M: stolen credentials vector
+    Web-based: 60_229_000  # $650k: $173/запись * ~3750 записей
+    Recon: 4_633_000       # $50k: минимальный прямой ущерб от разведки
+    Spoofing: 111_192_000  # $1.2M: MITM/ARP-spoofing
+
+  # Доли компонентов потерь "Cost categories"
+  loss_weights:
+    direct: 0.40           # Восстановление систем, IR-команда
+    indirect: 0.30         # Простой, отток клиентов
+    reputation: 0.15       # Репутационный ущерб
+    regulatory: 0.15       # Штрафы ФЗ-152
+
+  # Множители времени обнаружения  "Time to identify by attack vector"
+  # База: 150 дней (среднеотраслевое). Рекорд: 292 дня (BruteForce)
+  detection_time_multiplier:
+    BenignTraffic: 1.0
+    Recon: 1.1             # ~60 дней - видно в логах сразу
+    DDoS: 1.2              # ~90 дней
+    DoS: 1.2               # ~90 дней
+    Spoofing: 1.4          # ~150 дней
+    Web-based: 1.5         # ~180 дней
+    BruteForce: 1.8        # 292 дня - рекорд IBM
+    Mirai: 2.0             # 300+ дней
+
+  max_loss_rub: 926_600_000  # ~$10M * 92.66 - ограничение выбросов
+
+  # Пороги уровней риска (RUB)
+  risk_thresholds:
+    critical: 92_660_000
+    high: 9_266_000
+    medium: 926_600
+
+
+results:
+  path: "results"
+  dpi: 150
+  save_feature_importance: true
+  save_confusion_matrix: true
+  save_regression_analysis: true
