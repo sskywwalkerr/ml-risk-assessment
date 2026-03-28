@@ -23,11 +23,11 @@ class PreprocessingConfig:
 @dataclass(frozen=True, slots=True)
 class FinancialConfig:
     currency: str = "RUB"
-    usd_to_rub: float = 92.66
+    usd_to_rub: float = 81.42
     base_costs_rub: dict[str, float] = field(default_factory=dict)
     loss_weights: dict[str, float] = field(default_factory=dict)
     detection_time_multiplier: dict[str, float] = field(default_factory=dict)
-    max_loss_rub: float = 926_600_000.0
+    max_loss_rub: float = 814_200_000.0
     risk_thresholds: dict[str, float] = field(default_factory=dict)
 
 
@@ -66,7 +66,7 @@ class Config:
     results: ResultsConfig = field(default_factory=ResultsConfig)
 
     @staticmethod
-    def from_yaml(path: str = "configs/config.yaml") -> "Config":
+    def from_yaml(path: str = "main/config.yaml") -> "Config":
         config_path = Path(path)
         if not config_path.exists():
             raise FileNotFoundError(f"Конфиг не найден: {path}")
