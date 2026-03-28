@@ -7,6 +7,7 @@ from app.application.interfaces.financial import (
     SingleRiskRequest,
 )
 from app.domain import FinancialRisk, RiskLevel
+from app.infrastructure.config import FinancialConfig
 from app.infrastructure.financial.cost_model import (
     BASE_COSTS,
     DETECTION_TIME_MULTIPLIER,
@@ -17,15 +18,16 @@ from app.infrastructure.financial.cost_model import (
 class RiskAssessor(IRiskAssessor):
     """Определяет уровень риска по итоговым потерям."""
 
-    _THRESHOLDS: list[tuple[float, RiskLevel]] = [
-        (1_000_000.0, RiskLevel.CRITICAL),
-        (100_000.0, RiskLevel.HIGH),
-        (10_000.0, RiskLevel.MEDIUM),
-    ]
+    def __init__(self, config: FinancialConfig) -> None:
+        self._thresholds: list[tuple[float, RiskLevel]] = [
+            (config.risk_thresholds["critical"], RiskLevel.CRITICAL),
+            (config.risk_thresholds["high"], RiskLevel.HIGH),
+            (config.risk_thresholds["medium"], RiskLevel.MEDIUM),
+        ]
 
     def assess(self, total_loss: float) -> RiskLevel:
-        """Возвращает уровень риска."""
-        for threshold, level in self._THRESHOLDS:
+        """Возвращает уровень риска: LOW / MEDIUM / HIGH / CRITICAL."""
+        for threshold, level in self._thresholds:
             if total_loss >= threshold:
                 return level
         return RiskLevel.LOW
@@ -114,10 +116,10 @@ class RiskCalculator(IFinancialCalculator):
         )
 
         # вычисление 99й перцентиль, отсечь редкие аномальные выбросы и определить «нормальный максимум»
-        p99_rate = (
-            rate.quantile(0.99) * 1e-8
+        p99_rate = max(
+            float(rate.quantile(0.99)), 1e-8
         )  # масштабирование, чтобы привести огромные значения к рабочему диапазону.
-        p99_header = header.quantile(0.99) * 1e-8
+        p99_header = max(float(header.quantile(0.99)), 1e-8)
 
         # Весовая формула: скорость важнее (60%), длина заголовков дополняет (40%)
         intensity = (rate / p99_rate) * 0.6 + (header / p99_header) * 0.4
