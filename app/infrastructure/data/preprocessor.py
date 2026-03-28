@@ -1,3 +1,4 @@
+import logging
 from pathlib import Path
 
 import joblib  # type: ignore[import-untyped]
@@ -7,6 +8,8 @@ from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import LabelEncoder, RobustScaler
 
 from app.application.interfaces.preprocessor import DataSplits, IPreprocessor
+
+logger = logging.getLogger(__name__)
 
 # Колонки, которые не являются признаками
 _NON_FEATURE_COLS = {
@@ -29,26 +32,61 @@ class RobustPreprocessor(IPreprocessor):
         self._scaler: RobustScaler = RobustScaler()
         self._encoder: LabelEncoder = LabelEncoder()
         self._feature_names: list[str] = []
+        # Индексы строк после разбиения - нужны pipeline для нарезки других колонок
+        self.train_idx: np.ndarray = np.array([])
+        self.val_idx: np.ndarray = np.array([])
+        self.test_idx: np.ndarray = np.array([])
 
     def preprocess(self, df: pd.DataFrame) -> DataSplits:
+        logger.info(
+            "Запуск предобработки: %d строк, %d колонок", len(df), len(df.columns)
+        )
         df = self._clean(df)
+        df = df.reset_index(drop=True)
+        logger.info("После очистки: %d строк", len(df))
 
         y = self._encoder.fit_transform(df["label"])
+        logger.info(
+            "Классов: %d -> %s",
+            len(self._encoder.classes_),
+            list(self._encoder.classes_),
+        )
 
         drop = [c for c in df.columns if c in _NON_FEATURE_COLS]
 
         x = df.drop(columns=drop).select_dtypes(include=[np.number])
         self._feature_names = x.columns.tolist()
+        logger.info("Признаков: %d", len(self._feature_names))
 
+        # Fit: считает mean/std; Transform: приводит x к единому масштабу
         x_scaled = self._scaler.fit_transform(x)
 
+        # Создаёт массив индексов [0, 1, 2, ...] и разбивает его вместе с данными.
+        # Это гарантирует, что какие строки попали в какую выборку.
+        idx = np.arange(len(x_scaled))
+
         # 70% train / 10% val / 20% test
-        x_tmp, x_test, y_tmp, y_test = train_test_split(
-            x_scaled, y, test_size=0.2, random_state=42, stratify=y
+        idx_tmp, idx_test, x_tmp, x_test, y_tmp, y_test = train_test_split(
+            idx,
+            x_scaled,
+            y,
+            test_size=0.2,
+            random_state=42,
+            stratify=y,
         )
-        x_train, x_val, y_train, y_val = train_test_split(
-            x_tmp, y_tmp, test_size=0.125, random_state=42, stratify=y_tmp
+        idx_train, idx_val, x_train, x_val, y_train, y_val = train_test_split(
+            idx_tmp,
+            x_tmp,
+            y_tmp,
+            test_size=0.125,
+            random_state=42,
+            stratify=y_tmp,
         )
+
+        # Сохраняет индексы для использования в pipeline
+        self.train_idx = idx_train
+        self.val_idx = idx_val
+        self.test_idx = idx_test
 
         return DataSplits(
             x_train=x_train,
@@ -71,17 +109,18 @@ class RobustPreprocessor(IPreprocessor):
         joblib.dump(self._feature_names, p / "feature_names.pkl")
 
     def _clean(self, df: pd.DataFrame) -> pd.DataFrame:
-        """Удаляет inf, заполняет NaN медианой, убирает дубликаты."""
+        """Удаляет inf, заполняет NaN медианой."""
         df = df.copy()
         num = df.select_dtypes(include=[np.number]).columns
 
         df[num] = df[num].replace([np.inf, -np.inf], np.nan)
 
-        # >50% это пустые
+        # >50% числовых колонок — NaN → удалить строку
         df = df.dropna(thresh=int(len(num) * 0.5))
 
         for col in num:
             if df[col].isnull().any():
                 median = df[col].median()
                 df[col] = df[col].fillna(median if not np.isnan(median) else 0.0)
-        return df.drop_duplicates()
+
+        return df
