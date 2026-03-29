@@ -79,7 +79,7 @@ class Pipeline:
         viz.metrics_comparison(clf_results)
 
         logger.info("Обучение регрессора.")
-        self._run_regressor(df, splits, preprocessor, feature_names, viz)
+        self._run_regressor(splits, preprocessor, feature_names, viz)
 
         for name, r in clf_results.items():
             if r["status"] == "success":
@@ -88,17 +88,17 @@ class Pipeline:
                     f"{name:<20} Accuracy: {m['accuracy']:.4f}, F1-score: {m['f1_score']:.4f}"
                 )
 
-    def _run_regressor(self, df, splits, preprocessor, feature_names, viz) -> None:
+    def _run_regressor(self, splits, preprocessor, feature_names, viz) -> None:
         """Запускает регрессор на финансовых метках."""
         fin_col = "total_financial_loss"
-        if fin_col not in df.columns:
+
+        clean_df = preprocessor.clean_df
+        if clean_df is None or fin_col not in clean_df.columns:
             logger.info("Пропущено: столбец 'total_financial_loss' не найден")
             return
 
-        # Все финансовые метки из очищенного DataFrame
-        fin = df[fin_col].values
+        fin = clean_df[fin_col].values
 
-        # Нарезает по тем же индексам, что preprocessor использовал для x и y
         y_fin_train = fin[preprocessor.train_idx]
         y_fin_val = fin[preprocessor.val_idx]
         y_fin_test = fin[preprocessor.test_idx]
