@@ -42,8 +42,8 @@ class Container:
         """Интерактор обучения классификатора."""
         models = {
             "random_forest": RandomForestModel("classification"),
-            "xgboost": XGBoostModel("classification"),
-            "lightgbm": LightGBMModel("classification"),
+            "xgboost": XGBoostModel("classification", {"device": "cuda"}),
+            "lightgbm": LightGBMModel("classification", {"device": "gpu"}),
         }
         model = models.get(model_name)
         if model is None:
@@ -56,7 +56,7 @@ class Container:
     def train_regressor(self) -> TrainRegressorInteractor:
         """Интерактор обучения регрессора финансовых потерь (XGBoost)."""
         return TrainRegressorInteractor(
-            model=XGBoostModel("regression"),
+            model=XGBoostModel("regression", {"device": "cuda"}),
             repository=self._repository,
         )
 
