@@ -32,7 +32,8 @@ class RobustPreprocessor(IPreprocessor):
         self._scaler: RobustScaler = RobustScaler()
         self._encoder: LabelEncoder = LabelEncoder()
         self._feature_names: list[str] = []
-        # Индексы строк после разбиения - нужны pipeline для нарезки других колонок
+
+        self.clean_df: pd.DataFrame | None = None
         self.train_idx: np.ndarray = np.array([])
         self.val_idx: np.ndarray = np.array([])
         self.test_idx: np.ndarray = np.array([])
@@ -43,6 +44,7 @@ class RobustPreprocessor(IPreprocessor):
         )
         df = self._clean(df)
         df = df.reset_index(drop=True)
+        self.clean_df = df
         logger.info("После очистки: %d строк", len(df))
 
         y = self._encoder.fit_transform(df["label"])
@@ -58,11 +60,8 @@ class RobustPreprocessor(IPreprocessor):
         self._feature_names = x.columns.tolist()
         logger.info("Признаков: %d", len(self._feature_names))
 
-        # Fit: считает mean/std; Transform: приводит x к единому масштабу
         x_scaled = self._scaler.fit_transform(x)
 
-        # Создаёт массив индексов [0, 1, 2, ...] и разбивает его вместе с данными.
-        # Это гарантирует, что какие строки попали в какую выборку.
         idx = np.arange(len(x_scaled))
 
         # 70% train / 10% val / 20% test
@@ -83,7 +82,6 @@ class RobustPreprocessor(IPreprocessor):
             stratify=y_tmp,
         )
 
-        # Сохраняет индексы для использования в pipeline
         self.train_idx = idx_train
         self.val_idx = idx_val
         self.test_idx = idx_test
