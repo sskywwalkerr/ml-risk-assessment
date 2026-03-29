@@ -1,5 +1,6 @@
 from typing import Any
 
+import lightgbm as lgb
 import numpy as np
 from lightgbm import LGBMClassifier, LGBMRegressor
 
@@ -30,4 +31,5 @@ class LightGBMModel(BaseModel):
         y_val: np.ndarray | None,
     ) -> None:
         eval_set = [(x_val, y_val)] if x_val is not None else None
-        self._model.fit(x_train, y_train, eval_set=eval_set, verbose=False)
+        callbacks = [lgb.log_evaluation(period=-1)]
+        self._model.fit(x_train, y_train, eval_set=eval_set, callbacks=callbacks)
