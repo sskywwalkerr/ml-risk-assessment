@@ -30,7 +30,7 @@ class TrainRegressorResponse:
     """Результат обучения регрессора."""
 
     model_name: str
-    test_metrics: dict  # mae, rmse, r2, mape в реальных USD
+    test_metrics: dict  # mae, rmse, r2, mape
     feature_importance: dict
     y_pred: np.ndarray
     y_test: np.ndarray
@@ -48,18 +48,15 @@ class TrainRegressorInteractor:
         self._repository = repository
 
     def __call__(self, request: TrainRegressorRequest) -> TrainRegressorResponse:
-        y_train_log = np.log1p(request.y_train)
-        y_val_log = np.log1p(request.y_val)
-
         self._model.train(
             request.x_train,
-            y_train_log,
+            request.y_train,
             request.x_val,
-            y_val_log,
+            request.y_val,
         )
-        result = self._model.evaluate(request.x_test, np.log1p(request.y_test))
+        result = self._model.evaluate(request.x_test, request.y_test)
 
-        y_pred = np.expm1(result.predictions)
+        y_pred = result.predictions
         y_true = request.y_test
         mask = y_true > 0
 
