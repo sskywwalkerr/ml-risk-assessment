@@ -76,15 +76,15 @@ class Visualizer:
         axes[0].scatter(y_true, y_pred, alpha=0.3, s=2, c="steelblue")
         m = max(float(y_true.max()), float(y_pred.max()))
         axes[0].plot([0, m], [0, m], "r--", lw=2, label="Идеальное предсказание")
-        axes[0].set_xlabel("Фактические потери (₽)")
-        axes[0].set_ylabel("Предсказанные потери (₽)")
+        axes[0].set_xlabel("Фактические потери (RUB)")
+        axes[0].set_ylabel("Предсказанные потери (RUB)")
         axes[0].set_title("Предсказание vs Факт", fontweight="bold")
         axes[0].legend()
 
         residuals = y_pred - y_true
         axes[1].hist(residuals, bins=60, color="coral", edgecolor="black", alpha=0.7)
         axes[1].axvline(0, color="red", linestyle="--", lw=2)
-        axes[1].set_xlabel("Остатки (₽)")
+        axes[1].set_xlabel("Остатки (RUB)")
         axes[1].set_ylabel("Частота")
         axes[1].set_title("Распределение остатков", fontweight="bold")
 
@@ -146,11 +146,13 @@ class Visualizer:
         )
         colors = cm["RdYlGn_r"](np.linspace(0.1, 0.9, len(avg)))
         avg.plot(kind="barh", ax=axes[0], color=colors)
-        axes[0].set_xlabel("Средние потери (₽)", fontsize=11)
+        axes[0].set_xlabel("Средние потери (RUB)", fontsize=11)
         axes[0].set_title(
             "Средний ущерб по категории атаки", fontsize=12, fontweight="bold"
         )
-        axes[0].xaxis.set_major_formatter(plt.FuncFormatter(lambda x, _: f"₽{x:,.0f}"))
+        axes[0].xaxis.set_major_formatter(
+            plt.FuncFormatter(lambda x, _: f"RUB{x:,.0f}")
+        )
 
         risk_map = {
             "Mirai": "CRITICAL",
