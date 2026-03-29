@@ -32,6 +32,7 @@ models:
 
   xgboost:
     classification:
+      device: "cuda"
       n_estimators: 300
       max_depth: 8
       learning_rate: 0.05 # Скорость обучения (шаг градиента), меньше лучше результат
@@ -42,6 +43,7 @@ models:
       random_state: 42
       verbosity: 0 # Отчеты
     regression:
+      device: "cuda"
       n_estimators: 300
       max_depth: 8
       learning_rate: 0.05
@@ -54,16 +56,18 @@ models:
 
   lightgbm:
     classification:
+      device: "gpu"
       n_estimators: 300
       max_depth: 8
       learning_rate: 0.05
       subsample: 0.8
       colsample_bytree: 0.8
-      class_weight: "balanced"
+      min_child_samples: 50
       n_jobs: -1
       random_state: 42
       verbose: -1
     regression:
+      device: "gpu"
       n_estimators: 300
       max_depth: 8
       learning_rate: 0.05
@@ -75,27 +79,27 @@ models:
 
 financial:
   currency: "RUB"
-  usd_to_rub: 92.66
+  usd_to_rub: 81.30
 
-  base_costs_rub:
+  base_costs_rub: # базовая стоимость атаки
     BenignTraffic: 0
-    DDoS: 37_805_280       # $408k: $6k/мин * 68 мин
-    DoS: 25_018_200        # $270k: $6k/мин * 45 мин
-    Mirai: 475_345_800     # $5.13M: botnet/ransomware avg
-    BruteForce: 445_693_600  # $4.81M: stolen credentials vector
-    Web-based: 60_229_000  # $650k: $173/запись * ~3750 записей
-    Recon: 4_633_000       # $50k: минимальный прямой ущерб от разведки
-    Spoofing: 111_192_000  # $1.2M: MITM/ARP-spoofing
+    DDoS: 33_170_400       # $408k: $6k/мин * 68 мин
+    DoS: 21_951_000        # $270k: $6k/мин * 45 мин
+    Mirai: 417_069_000     # $5.13M: botnet/ransomware avg
+    BruteForce: 391_053_000  # $4.81M: stolen credentials vector
+    Web-based: 52_845_000  # $650k: $173/запись * ~3750 записей
+    Recon: 4_065_000       # $50k: минимальный прямой ущерб от разведки
+    Spoofing: 97_560_000   # $1.2M: MITM/ARP-spoofing
 
-  # Доли компонентов потерь "Cost categories"
+  # разбивка ущерба на категории, доли компонентов потерь "Cost categories"
   loss_weights:
-    direct: 0.40           # Восстановление систем, IR-команда
-    indirect: 0.30         # Простой, отток клиентов
-    reputation: 0.15       # Репутационный ущерб
-    regulatory: 0.15       # Штрафы ФЗ-152
+    direct: 0.40           # прямые: Восстановление систем, IR-команда
+    indirect: 0.30         # косвенные: Простой, отток клиентов
+    reputation: 0.15       # репутационные: Репутационный ущерб
+    regulatory: 0.15       # штрафы: Штрафы ФЗ-152
 
   # Множители времени обнаружения  "Time to identify by attack vector"
-  # База: 150 дней (среднеотраслевое). Рекорд: 292 дня (BruteForce)
+  # База: 150 дней = 1.0 (среднеотраслевое). Рекорд: 292 дня (BruteForce) 1
   detection_time_multiplier:
     BenignTraffic: 1.0
     Recon: 1.1             # ~60 дней - видно в логах сразу
@@ -106,13 +110,13 @@ financial:
     BruteForce: 1.8        # 292 дня - рекорд IBM
     Mirai: 2.0             # 300+ дней
 
-  max_loss_rub: 926_600_000  # ~$10M * 92.66 - ограничение выбросов
+  max_loss_rub: 813_000_000    # ~$10M * 81.30 - ограничение выбросов
 
   # Пороги уровней риска (RUB)
   risk_thresholds:
-    critical: 92_660_000
-    high: 9_266_000
-    medium: 926_600
+    critical: 81_300_000   # >= ~$1M
+    high: 8_130_000        # >= ~$100K
+    medium: 813_000        # >= ~$10K
 
 
 results:
