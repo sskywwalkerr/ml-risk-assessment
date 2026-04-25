@@ -1,3 +1,4 @@
+import contextlib
 from dataclasses import dataclass
 
 import numpy as np
@@ -29,6 +30,7 @@ class TrainClassifierResponse:
     feature_importance: dict  # топ-15 признаков
     y_pred: np.ndarray
     y_test: np.ndarray
+    y_prob: np.ndarray | None  # вероятности для ROC-кривой, None если недоступны
 
 
 class TrainClassifierInteractor:
@@ -43,6 +45,8 @@ class TrainClassifierInteractor:
         self._repository = repository
 
     def __call__(self, request: TrainClassifierRequest) -> TrainClassifierResponse:
+        self._model.set_feature_names(request.feature_names)
+
         self._model.train(
             request.x_train,
             request.y_train,
@@ -52,6 +56,11 @@ class TrainClassifierInteractor:
         result = self._model.evaluate(request.x_test, request.y_test)
         importance = self._model.get_feature_importance(request.feature_names)
 
+        # Вероятности для ROC-кривой — через публичный интерфейс
+        y_prob: np.ndarray | None = None
+        with contextlib.suppress(NotImplementedError):
+            y_prob = self._model.predict_proba(request.x_test)
+
         self._repository.save(self._model, request.model_name)
 
         return TrainClassifierResponse(
@@ -60,4 +69,5 @@ class TrainClassifierInteractor:
             feature_importance=importance,
             y_pred=result.predictions,
             y_test=request.y_test,
+            y_prob=y_prob,
         )

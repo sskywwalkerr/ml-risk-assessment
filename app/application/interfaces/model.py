@@ -50,10 +50,7 @@ class IModel(ABC):
 
 
 class IExplainableModel(IModel, ABC):
-    """
-    Интерфейс для моделей поддерживающих объяснимость.
-    Не все модели обязаны реализовывать feature importance.
-    """
+    """Интерфейс для моделей, поддерживающих объяснимость и вероятности."""
 
     @abstractmethod
     def get_feature_importance(
@@ -62,4 +59,14 @@ class IExplainableModel(IModel, ABC):
         top_n: int = 15,
     ) -> dict[str, float]:
         """Возвращает топ-N наиболее важных признаков."""
+        ...
+
+    @abstractmethod
+    def set_feature_names(self, feature_names: list[str]) -> None:
+        """Сохраняет имена признаков до обучения."""
+        ...
+
+    @abstractmethod
+    def predict_proba(self, x: np.ndarray) -> np.ndarray:
+        """Возвращает вероятности классов (для ROC-кривой)."""
         ...
