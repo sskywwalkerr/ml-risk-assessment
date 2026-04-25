@@ -32,7 +32,6 @@ class RobustPreprocessor(IPreprocessor):
         self._scaler: RobustScaler = RobustScaler()
         self._encoder: LabelEncoder = LabelEncoder()
         self._feature_names: list[str] = []
-
         self.clean_df: pd.DataFrame | None = None
         self.train_idx: np.ndarray = np.array([])
         self.val_idx: np.ndarray = np.array([])
