@@ -35,12 +35,11 @@ class RiskCalculator(IFinancialCalculator):
     """
 
     def __init__(self, config: FinancialConfig, assessor: IRiskAssessor) -> None:
-        self._config = config
         self._assessor = assessor
-        self._base_costs = config.base_costs_rub
-        self._loss_weights = config.loss_weights
-        self._detection_multipliers = config.detection_time_multiplier
-        self._max_loss = config.max_loss_rub
+        self._base_costs: dict[str, float] = config.base_costs_rub
+        self._loss_weights: dict[str, float] = config.loss_weights
+        self._detection_multipliers: dict[str, float] = config.detection_time_multiplier
+        self._max_loss: float = config.max_loss_rub
 
         # Средняя стоимость атаки для неизвестных типов
         non_zero = [v for v in self._base_costs.values() if v > 0]
@@ -75,27 +74,26 @@ class RiskCalculator(IFinancialCalculator):
         return df
 
     def calculate_single(self, request: SingleRiskRequest) -> FinancialRisk:
-        """Рассчитывает ALE для одной атаки с вероятностью из классификатора."""
+        """
+        Рассчитывает ALE для одной атаки с вероятностью из классификатора.
+
+        L = C_base * M_intensity * K_detection × P
+        """
+
         base = self._base_costs.get(request.attack_type, self._default_cost)
         det_mult = self._detection_multipliers.get(request.attack_type, 1.0)
 
-        # Доли ущерба
-        direct = base * self._loss_weights["direct"]
-        indirect = base * self._loss_weights["indirect"]
-        reputation = base * self._loss_weights["reputation"]
-        regulatory = base * self._loss_weights["regulatory"]
-
-        total = base * request.intensity * det_mult * request.probability
-
         return FinancialRisk(
             attack_type=request.attack_type,
-            direct_loss=direct,
-            indirect_loss=indirect,
-            reputation_loss=reputation,
-            regulatory_fine=regulatory,
+            direct_loss=base * self._loss_weights["direct"],
+            indirect_loss=base * self._loss_weights["indirect"],
+            reputation_loss=base * self._loss_weights["reputation"],
+            regulatory_fine=base * self._loss_weights["regulatory"],
             intensity_multiplier=request.intensity * det_mult,
             probability=request.probability,
-            risk_level=self._assessor.assess(total),
+            risk_level=self._assessor.assess(
+                base * request.intensity * det_mult * request.probability
+            ),
         )
 
     @staticmethod
