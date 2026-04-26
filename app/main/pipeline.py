@@ -24,7 +24,7 @@ class Pipeline:
             LoadDatasetRequest(sample_size=self._config.data.sample_size)
         )
         df = load_resp.df
-        logger.info(f"Строк: {load_resp.n_rows:}, столбцов: {load_resp.n_cols:}")
+        logger.info("Строк: %d, столбцов: %d", load_resp.n_rows, load_resp.n_cols)
 
         viz = self._container.visualizer()
         viz.label_distribution(load_resp.label_distribution)
@@ -35,21 +35,25 @@ class Pipeline:
         splits = preprocessor.preprocess(df)
         preprocessor.save("models/metadata")
         logger.info(
-            f"Train: {len(splits.x_train):,} | Val: {len(splits.x_val):,} | Test: {len(splits.x_test):,}"
+            "Train: %s | Val: %s | Test: %s",
+            f"{len(splits.x_train):,}",
+            f"{len(splits.x_val):,}",
+            f"{len(splits.x_test):,}",
         )
         logger.info(
-            f"Признаков: {len(splits.feature_names)} | Классов: {splits.n_classes}"
+            "Признаков: %d | Классов: %d",
+            len(splits.feature_names),
+            splits.n_classes,
         )
 
         feature_names = list(splits.feature_names)
-        label_encoder = splits.label_encoder
-        classes = list(label_encoder.classes_)
+        classes = list(splits.label_encoder.classes_)
 
         logger.info("Обучение классификаторов.")
         clf_results: dict = {}
 
         for name in CLASSIFIERS:
-            logger.info(f"\n {name.upper()}")
+            logger.info("\n %s", name.upper())
             try:
                 response = self._container.train_classifier(name)(
                     TrainClassifierRequest(
@@ -64,18 +68,33 @@ class Pipeline:
                     )
                 )
                 m = response.test_metrics
-                logger.info(f"Accuracy: {m['accuracy']:.4f}")
-                logger.info(f"F1-score: {m['f1_score']:.4f}")
+                logger.info("Accuracy: %.4f", m["accuracy"])
+                logger.info("F1-score: %.4f", m["f1_score"])
 
                 clf_results[name] = {"status": "success", "test_metrics": m}
 
                 viz.confusion_matrix(
-                    response.y_test, response.y_pred, labels=classes, model_name=name
+                    response.y_test,
+                    response.y_pred,
+                    labels=classes,
+                    model_name=name,
                 )
                 viz.feature_importance(response.feature_importance, name)
+
+                # ROC-кривая - y_prob
+                if response.y_prob is not None:
+                    viz.plot_roc_curve(
+                        response.y_test,
+                        response.y_prob,
+                        labels=classes,
+                        model_name=name,
+                    )
+                    logger.info("ROC-кривая сохранена для %s", name)
+
             except Exception as e:
-                logger.exception("Ошибка при обучении %s, ошибка: %s", name, e)
+                logger.exception("Ошибка при обучении %s: %s", name, e)
                 clf_results[name] = {"status": "error", "error": str(e)}
+
         viz.metrics_comparison(clf_results)
 
         logger.info("Обучение регрессора.")
@@ -85,20 +104,22 @@ class Pipeline:
             if r["status"] == "success":
                 m = r["test_metrics"]
                 logger.info(
-                    f"{name:<20} Accuracy: {m['accuracy']:.4f}, F1-score: {m['f1_score']:.4f}"
+                    "%-20s Accuracy: %.4f, F1-score: %.4f",
+                    name,
+                    m["accuracy"],
+                    m["f1_score"],
                 )
 
-    def _run_regressor(self, splits, preprocessor, feature_names, viz) -> None:
+    def _run_regressor(self, splits, preprocessor, feature_names, viz) -> None:  # type: ignore[no-untyped-def]
         """Запускает регрессор на финансовых метках."""
         fin_col = "total_financial_loss"
 
         clean_df = preprocessor.clean_df
         if clean_df is None or fin_col not in clean_df.columns:
-            logger.info("Пропущено: столбец 'total_financial_loss' не найден")
+            logger.info("Пропущено: столбец '%s' не найден", fin_col)
             return
 
         fin = clean_df[fin_col].values
-
         y_fin_train = fin[preprocessor.train_idx]
         y_fin_val = fin[preprocessor.val_idx]
         y_fin_test = fin[preprocessor.test_idx]
@@ -117,10 +138,10 @@ class Pipeline:
                 )
             )
             m = response.test_metrics
-            logger.info(f"MAE: {m['mae']:>12,.2f}")
-            logger.info(f"RMSE: {m['rmse']:>12,.2f}")
-            logger.info(f"R2: {m['r2']:>13,.4f}")
-            logger.info(f"MAPE: {m['mape']:>12,.2f}%")
+            logger.info("MAE:  %12.2f", m["mae"])
+            logger.info("RMSE: %12.2f", m["rmse"])
+            logger.info("R2:   %13.4f", m["r2"])
+            logger.info("MAPE: %11.2f%%", m["mape"])
 
             viz.regression_analysis(
                 response.y_test, response.y_pred, "xgboost_regressor"

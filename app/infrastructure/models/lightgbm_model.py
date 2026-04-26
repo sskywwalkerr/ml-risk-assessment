@@ -8,7 +8,7 @@ from app.infrastructure.models.base import BaseModel
 
 
 class LightGBMModel(BaseModel):
-    """Обучение LightGBM."""
+    """LightGBM быстрый градиентный бустинг."""
 
     def __init__(
         self, task: str = "classification", params: dict[str, Any] | None = None
@@ -30,6 +30,7 @@ class LightGBMModel(BaseModel):
         x_val: np.ndarray | None,
         y_val: np.ndarray | None,
     ) -> None:
-        eval_set = [(x_val, y_val)] if x_val is not None else None
+        x_train_df = self._to_frame(x_train)
+        eval_set = [(self._to_frame(x_val), y_val)] if x_val is not None else None
         callbacks = [lgb.log_evaluation(period=-1)]
-        self._model.fit(x_train, y_train, eval_set=eval_set, callbacks=callbacks)
+        self._model.fit(x_train_df, y_train, eval_set=eval_set, callbacks=callbacks)

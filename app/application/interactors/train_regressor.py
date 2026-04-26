@@ -48,6 +48,8 @@ class TrainRegressorInteractor:
         self._repository = repository
 
     def __call__(self, request: TrainRegressorRequest) -> TrainRegressorResponse:
+        self._model.set_feature_names(request.feature_names)
+
         self._model.train(
             request.x_train,
             request.y_train,
@@ -63,18 +65,19 @@ class TrainRegressorInteractor:
         metrics = {
             "mae": float(
                 mean_absolute_error(y_true, y_pred)
-            ),  # Средняя абсолютная ошибка
+            ),  # средняя абсолютная ошибка
             "rmse": float(
                 np.sqrt(mean_squared_error(y_true, y_pred))
-            ),  # Корень из среднеквадратичной ошибки
-            "r2": float(r2_score(y_true, y_pred)),  # Коэффициент детерминации
+            ),  # корень из среднеквадратичной
+            "r2": float(r2_score(y_true, y_pred)),  # коэффициент детерминации
+            # MAPE считаем только по атакам (ущерб > 0) — иначе деление на 0
             "mape": (
                 float(
                     np.mean(np.abs((y_true[mask] - y_pred[mask]) / y_true[mask])) * 100
                 )
                 if mask.sum() > 0
                 else 0.0
-            ),  # Средняя относительная ошибка
+            ),  # средняя относительная ошибка (только по атакам, где ущерб > 0)
         }
 
         importance = self._model.get_feature_importance(request.feature_names)
