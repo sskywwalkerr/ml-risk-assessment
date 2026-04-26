@@ -9,6 +9,7 @@ from app.main.di.container import Container
 logger = logging.getLogger(__name__)
 
 CLASSIFIERS = ["random_forest", "xgboost", "lightgbm"]
+REGRESSORS = ["xgboost_regressor", "lightgbm_regressor", "random_forest_regressor"]
 
 
 class Pipeline:
@@ -110,10 +111,8 @@ class Pipeline:
                     m["f1_score"],
                 )
 
-    def _run_regressor(self, splits, preprocessor, feature_names, viz) -> None:  # type: ignore[no-untyped-def]
-        """Запускает регрессор на финансовых метках."""
+    def _run_regressor(self, splits, preprocessor, feature_names, viz) -> None:
         fin_col = "total_financial_loss"
-
         clean_df = preprocessor.clean_df
         if clean_df is None or fin_col not in clean_df.columns:
             logger.info("Пропущено: столбец '%s' не найден", fin_col)
@@ -124,29 +123,29 @@ class Pipeline:
         y_fin_val = fin[preprocessor.val_idx]
         y_fin_test = fin[preprocessor.test_idx]
 
-        try:
-            response = self._container.train_regressor()(
-                TrainRegressorRequest(
-                    x_train=splits.x_train,
-                    y_train=y_fin_train,
-                    x_val=splits.x_val,
-                    y_val=y_fin_val,
-                    x_test=splits.x_test,
-                    y_test=y_fin_test,
-                    feature_names=feature_names,
-                    model_name="xgboost_regressor",
+        for name in REGRESSORS:
+            logger.info("\n %s", name.upper())
+            try:
+                response = self._container.train_regressor(name)(
+                    TrainRegressorRequest(
+                        x_train=splits.x_train,
+                        y_train=y_fin_train,
+                        x_val=splits.x_val,
+                        y_val=y_fin_val,
+                        x_test=splits.x_test,
+                        y_test=y_fin_test,
+                        feature_names=feature_names,
+                        model_name=name,
+                    )
                 )
-            )
-            m = response.test_metrics
-            logger.info("MAE:  %12.2f", m["mae"])
-            logger.info("RMSE: %12.2f", m["rmse"])
-            logger.info("R2:   %13.4f", m["r2"])
-            logger.info("MAPE: %11.2f%%", m["mape"])
+                m = response.test_metrics
+                logger.info("MAE:  %12.2f", m["mae"])
+                logger.info("RMSE: %12.2f", m["rmse"])
+                logger.info("R2:   %13.4f", m["r2"])
+                logger.info("MAPE: %11.2f%%", m["mape"])
 
-            viz.regression_analysis(
-                response.y_test, response.y_pred, "xgboost_regressor"
-            )
-            viz.feature_importance(response.feature_importance, "xgboost_regressor")
+                viz.regression_analysis(response.y_test, response.y_pred, name)
+                viz.feature_importance(response.feature_importance, name)
 
-        except Exception as e:
-            logger.exception("Ошибка регрессора: %s", e)
+            except Exception as e:
+                logger.exception("Ошибка регрессора %s: %s", name, e)

@@ -72,16 +72,27 @@ class Container:
             )
         return TrainClassifierInteractor(model=model, repository=self._repository)
 
-    def train_regressor(self) -> TrainRegressorInteractor:
-        """Интерактор обучения регрессора финансовых потерь (XGBoost)."""
+    def train_regressor(self, model_name: str) -> TrainRegressorInteractor:
+        """Интерактор обучения регрессора финансовых потерь."""
         cfg = self._config.models
-        return TrainRegressorInteractor(
-            model=XGBoostModel(
+        models = {
+            "xgboost_regressor": XGBoostModel(
                 "regression",
                 cfg.get("xgboost", {}).get("regression", {}),
             ),
-            repository=self._repository,
-        )
+            "lightgbm_regressor": LightGBMModel(
+                "regression",
+                cfg.get("lightgbm", {}).get("regression", {}),
+            ),
+            "random_forest_regressor": RandomForestModel(
+                "regression",
+                cfg.get("random_forest", {}).get("regression", {}),
+            ),
+        }
+        model = models.get(model_name)
+        if model is None:
+            raise ValueError(f"Неизвестный регрессор: '{model_name}'")
+        return TrainRegressorInteractor(model=model, repository=self._repository)
 
     def assess_risk(self) -> AssessFinancialRiskInteractor:
         """Интерактор оценки риска одной атаки."""
