@@ -85,7 +85,7 @@ class BaseModel(IExplainableModel):
     def get_feature_importance(
         self, feature_names: list[str], top_n: int = 15
     ) -> dict[str, float]:
-        """Возвращает топ-N признаков по важности."""
+        """Возвращает топ-N признаков по важности (feature_importances_)."""
         if not hasattr(self._model, "feature_importances_"):
             return {}
         imp: np.ndarray = self._model.feature_importances_
