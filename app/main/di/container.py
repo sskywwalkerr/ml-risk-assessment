@@ -17,13 +17,19 @@ from app.presentation.visualizer import Visualizer
 
 
 class Container:
-    """IoC-контейнер - собирает все зависимости в одном месте (DIP)."""
+    """IoC-контейнер — собирает все зависимости в одном месте (DIP).
+
+    Единственное место, где знает о конкретных реализациях.
+    Все модули выше работают только с абстракциями.
+    """
 
     def __init__(self, config: Config) -> None:
         self._config = config
 
+        # Финансовый модуль — параметры из config.yaml, не из хардкода
         self._assessor = RiskAssessor(config.financial)
-        self._calculator = RiskCalculator(self._assessor)
+        self._calculator = RiskCalculator(config.financial, self._assessor)
+
         self._loader = CSVDataLoader(config.data.path)
         self._engineer = FeatureEngineer()
         self._preprocessor = RobustPreprocessor()
@@ -39,11 +45,24 @@ class Container:
         )
 
     def train_classifier(self, model_name: str) -> TrainClassifierInteractor:
-        """Интерактор обучения классификатора."""
+        """Интерактор обучения классификатора.
+
+        Параметры моделей загружаются из config.yaml.
+        """
+        cfg = self._config.models
         models = {
-            "random_forest": RandomForestModel("classification"),
-            "xgboost": XGBoostModel("classification", {"device": "cuda"}),
-            "lightgbm": LightGBMModel("classification", {"device": "gpu"}),
+            "random_forest": RandomForestModel(
+                "classification",
+                cfg.get("random_forest", {}).get("classification", {}),
+            ),
+            "xgboost": XGBoostModel(
+                "classification",
+                cfg.get("xgboost", {}).get("classification", {}),
+            ),
+            "lightgbm": LightGBMModel(
+                "classification",
+                cfg.get("lightgbm", {}).get("classification", {}),
+            ),
         }
         model = models.get(model_name)
         if model is None:
@@ -55,8 +74,12 @@ class Container:
 
     def train_regressor(self) -> TrainRegressorInteractor:
         """Интерактор обучения регрессора финансовых потерь (XGBoost)."""
+        cfg = self._config.models
         return TrainRegressorInteractor(
-            model=XGBoostModel("regression", {"device": "cuda"}),
+            model=XGBoostModel(
+                "regression",
+                cfg.get("xgboost", {}).get("regression", {}),
+            ),
             repository=self._repository,
         )
 
