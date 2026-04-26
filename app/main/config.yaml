@@ -56,23 +56,26 @@ models:
 
   lightgbm:
     classification:
-      device: "gpu"
+      device: "cpu"
       n_estimators: 300
       max_depth: 8
+      num_leaves: 63
       learning_rate: 0.05
       subsample: 0.8
       colsample_bytree: 0.8
-      min_child_samples: 50
+      min_child_samples: 20
       n_jobs: -1
       random_state: 42
       verbose: -1
     regression:
-      device: "gpu"
+      device: "cpu"
       n_estimators: 300
       max_depth: 8
+      num_leaves: 63
       learning_rate: 0.05
       subsample: 0.8
       colsample_bytree: 0.8
+      min_child_samples: 20
       n_jobs: -1
       random_state: 42
       verbose: -1
