@@ -8,7 +8,7 @@ from app.infrastructure.models.base import BaseModel
 
 
 class LightGBMModel(BaseModel):
-    """LightGBM градиентный бустинг с GPU-ускорением."""
+    """LightGBM быстрый градиентный бустинг."""
 
     def __init__(
         self, task: str = "classification", params: dict[str, Any] | None = None
