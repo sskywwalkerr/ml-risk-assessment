@@ -4,7 +4,7 @@ from app.main.pipeline import Pipeline
 
 
 def main() -> None:
-    config = Config.from_yaml("main/config.yaml")
+    config = Config.from_yaml("app/main/config.yaml")
     setup_logging(config.app)
     Pipeline(config).run()
 

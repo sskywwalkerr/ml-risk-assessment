@@ -77,7 +77,7 @@ class Config:
     results: ResultsConfig = field(default_factory=ResultsConfig)
 
     @staticmethod
-    def from_yaml(path: str = "main/config.yaml") -> "Config":
+    def from_yaml(path: str = "app/main/config.yaml") -> "Config":
         config_path = Path(path)
         if not config_path.exists():
             raise FileNotFoundError(f"Конфиг не найден: {path}")
