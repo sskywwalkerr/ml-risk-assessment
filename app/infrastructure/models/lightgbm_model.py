@@ -32,5 +32,8 @@ class LightGBMModel(BaseModel):
     ) -> None:
         x_train_df = self._to_frame(x_train)
         eval_set = [(self._to_frame(x_val), y_val)] if x_val is not None else None
-        callbacks = [lgb.log_evaluation(period=-1)]
+        callbacks = [
+            lgb.early_stopping(stopping_rounds=50),
+            lgb.log_evaluation(period=-1),
+        ]
         self._model.fit(x_train_df, y_train, eval_set=eval_set, callbacks=callbacks)
