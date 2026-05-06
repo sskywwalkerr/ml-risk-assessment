@@ -35,7 +35,10 @@ class Pipeline:
         # 1% от мажоритарного класса минимальный порог представленности
         target = max(int(majority * 0.05), 30_000)
 
-        strategy = {cls: max(count, target) for cls, count in counts.items()}
+        strategy = {
+            cls: max(count, target)
+            for cls, count in counts.items()
+        }
 
         logger.info("Oversampling: порог %d записей на класс.", target)
         for cls, count in sorted(counts.items()):
@@ -92,7 +95,8 @@ class Pipeline:
         for name in CLASSIFIERS:
             logger.info("\n %s", name.upper())
             try:
-                response = self._container.train_classifier(name)(
+                interactor = self._container.train_classifier(name)
+                response = interactor(
                     TrainClassifierRequest(
                         x_train=x_train_bal,
                         y_train=y_train_bal,
@@ -118,7 +122,6 @@ class Pipeline:
                 )
                 viz.feature_importance(response.feature_importance, name)
 
-                # ROC-кривая - y_prob
                 if response.y_prob is not None:
                     viz.plot_roc_curve(
                         response.y_test,
