@@ -31,4 +31,10 @@ class XGBoostModel(BaseModel):
     ) -> None:
         x_train_df = self._to_frame(x_train)
         eval_set = [(self._to_frame(x_val), y_val)] if x_val is not None else None
-        self._model.fit(x_train_df, y_train, eval_set=eval_set, verbose=False)
+        self._model.fit(
+            x_train_df,
+            y_train,
+            eval_set=eval_set,
+            early_stopping_rounds=50,
+            verbose=False,
+        )
