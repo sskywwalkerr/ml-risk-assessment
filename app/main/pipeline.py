@@ -1,4 +1,8 @@
 import logging
+from collections import Counter
+
+import numpy as np
+from imblearn.over_sampling import SMOTE
 
 from app.application.interactors.load_dataset import LoadDatasetRequest
 from app.application.interactors.train_classifier import TrainClassifierRequest
@@ -18,6 +22,36 @@ class Pipeline:
     def __init__(self, config: Config) -> None:
         self._config = config
         self._container = Container(config)
+
+    def _oversample(
+        self,
+        x_train: np.ndarray,
+        y_train: np.ndarray,
+    ) -> tuple[np.ndarray, np.ndarray]:
+        """Увеличивает редкие классы до минимального порога через RandomOverSampler."""
+        counts = Counter(y_train)
+        majority = max(counts.values())
+
+        # 1% от мажоритарного класса минимальный порог представленности
+        target = max(int(majority * 0.05), 30_000)
+
+        strategy = {cls: max(count, target) for cls, count in counts.items()}
+
+        logger.info("Oversampling: порог %d записей на класс.", target)
+        for cls, count in sorted(counts.items()):
+            new_count = strategy[cls]
+            if new_count > count:
+                logger.info("  класс %d: %d -> %d", cls, count, new_count)
+
+        ros = SMOTE(sampling_strategy=strategy, random_state=42, k_neighbors=5)
+        x_bal, y_bal = ros.fit_resample(x_train, y_train)
+
+        logger.info(
+            "После oversampling: %d строк (было %d).",
+            len(x_bal),
+            len(x_train),
+        )
+        return x_bal, y_bal
 
     def run(self) -> None:
         logger.info("Загрузка данных.")
@@ -50,6 +84,8 @@ class Pipeline:
         feature_names = list(splits.feature_names)
         classes = list(splits.label_encoder.classes_)
 
+        x_train_bal, y_train_bal = self._oversample(splits.x_train, splits.y_train)
+
         logger.info("Обучение классификаторов.")
         clf_results: dict = {}
 
@@ -58,8 +94,8 @@ class Pipeline:
             try:
                 response = self._container.train_classifier(name)(
                     TrainClassifierRequest(
-                        x_train=splits.x_train,
-                        y_train=splits.y_train,
+                        x_train=x_train_bal,
+                        y_train=y_train_bal,
                         x_val=splits.x_val,
                         y_val=splits.y_val,
                         x_test=splits.x_test,
