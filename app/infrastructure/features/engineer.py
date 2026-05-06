@@ -178,6 +178,38 @@ class FeatureEngineer(IFeatureEngineer):
                 + (udp / total) * np.log2(udp / total + 1e-8)
                 + (icmp / total) * np.log2(icmp / total + 1e-8)
             )
+        urg = self._col(df, "urg_count")
+        if urg is not None:
+            # Логарифм сжимает выбросы Mirai/DDoS (max=4401, std=71)
+            # и улучшает разделение с нормальным трафиком
+            df["urg_count_log"] = np.log1p(urg)
+
+        http = self._col(df, "http")
+        https = self._col(df, "https")
+        ssh = self._col(df, "ssh")
+        dns = self._col(df, "dns")
+        tcp = self._col(df, "tcp")
+        udp = self._col(df, "udp")
+        rst = self._col(df, "rst_count")
+
+        if http is not None and https is not None and dns is not None:
+            # Web-based атаки используют HTTP/HTTPS без предшествующих DNS-запросов
+            # легитимный трафик обычно имеет DNS перед соединением
+            df["web_without_dns"] = (http + https) * (1 - dns.clip(upper=1))
+
+        if ssh is not None and rst is not None:
+            # BruteForce SSH — много RST означает отказы авторизации
+            df["ssh_with_rst"] = ssh * rst
+
+        if (
+            http is not None
+            and https is not None
+            and tcp is not None
+            and udp is not None
+        ):
+            # Доля прикладного уровня к транспортному:
+            # Web-based: высокая, DDoS/DoS/Mirai: близка к нулю
+            df["app_to_transport_ratio"] = (http + https) / (tcp + udp + 1e-8)
         return df
 
     @staticmethod
