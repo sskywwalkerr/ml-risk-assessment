@@ -24,6 +24,8 @@ _NON_FEATURE_COLS = {
     "risk_level",
 }
 
+_ZSCORE_COLS = ("rate", "header_length", "flow_duration", "iat")
+
 
 class RobustPreprocessor(IPreprocessor):
     """Очищает данные, масштабирует RobustScaler и разбивает на выборки."""
@@ -32,6 +34,8 @@ class RobustPreprocessor(IPreprocessor):
         self._scaler: RobustScaler = RobustScaler()
         self._encoder: LabelEncoder = LabelEncoder()
         self._feature_names: list[str] = []
+        # mean/std для каждого _ZSCORE_COLS — сохраняются на диск
+        self._zscore_stats: dict[str, dict[str, float]] = {}
         self.clean_df: pd.DataFrame | None = None
         self.train_idx: np.ndarray = np.array([])
         self.val_idx: np.ndarray = np.array([])
@@ -53,8 +57,22 @@ class RobustPreprocessor(IPreprocessor):
             list(self._encoder.classes_),
         )
 
-        drop = [c for c in df.columns if c in _NON_FEATURE_COLS]
+        # Вычисляем и сохраняем статистики z-score ДО feature engineering
+        # (engineer.py уже применил их к df, но нам нужны оригинальные mean/std)
+        for col in _ZSCORE_COLS:
+            if col in df.columns:
+                s = pd.to_numeric(df[col], errors="coerce").fillna(0.0)
+                mean_val = float(s.mean())
+                std_val = float(s.std())
+                self._zscore_stats[col] = {
+                    "mean": mean_val,
+                    "std": std_val if std_val > 0 else 1.0,
+                }
+                logger.info(
+                    "zscore_stats[%s]: mean=%.4f std=%.4f", col, mean_val, std_val
+                )
 
+        drop = [c for c in df.columns if c in _NON_FEATURE_COLS]
         x = df.drop(columns=drop).select_dtypes(include=[np.number])
         self._feature_names = x.columns.tolist()
         logger.info("Признаков: %d", len(self._feature_names))
@@ -63,7 +81,6 @@ class RobustPreprocessor(IPreprocessor):
 
         idx = np.arange(len(x_scaled))
 
-        # 70% train / 10% val / 20% test
         idx_tmp, idx_test, x_tmp, x_test, y_tmp, y_test = train_test_split(
             idx,
             x_scaled,
@@ -98,12 +115,14 @@ class RobustPreprocessor(IPreprocessor):
         )
 
     def save(self, path: str) -> None:
-        """Сохранение для инференса."""
+        """Сохраняет scaler, label_encoder, feature_names и zscore_stats."""
         p = Path(path)
         p.mkdir(parents=True, exist_ok=True)
         joblib.dump(self._scaler, p / "scaler.pkl")
         joblib.dump(self._encoder, p / "label_encoder.pkl")
         joblib.dump(self._feature_names, p / "feature_names.pkl")
+        joblib.dump(self._zscore_stats, p / "zscore_stats.pkl")
+        logger.info("Сохранены zscore_stats для %d признаков", len(self._zscore_stats))
 
     def _clean(self, df: pd.DataFrame) -> pd.DataFrame:
         """Удаляет inf, заполняет NaN медианой."""
