@@ -2,7 +2,6 @@ import logging
 from collections import Counter
 
 import numpy as np
-from imblearn.over_sampling import SMOTE
 
 from app.application.interactors.load_dataset import LoadDatasetRequest
 from app.application.interactors.train_classifier import TrainClassifierRequest
@@ -12,47 +11,61 @@ from app.main.di.container import Container
 
 logger = logging.getLogger(__name__)
 
-CLASSIFIERS = ["random_forest", "xgboost", "lightgbm"]
-REGRESSORS = ["xgboost_regressor", "lightgbm_regressor", "random_forest_regressor"]
+CLASSIFIERS = ["xgboost"]
+REGRESSORS = ["xgboost_regressor"]
+
+
+MAX_SAMPLES_PER_CLASS = 500_000
 
 
 class Pipeline:
-    """Оркестрирует полный ML-пайплайн через interactors."""
-
     def __init__(self, config: Config) -> None:
         self._config = config
         self._container = Container(config)
 
-    def _oversample(
+    def _downsample(
         self,
         x_train: np.ndarray,
         y_train: np.ndarray,
     ) -> tuple[np.ndarray, np.ndarray]:
-        """Увеличивает редкие классы до минимального порога через RandomOverSampler."""
+        """
+        Даунсэмплинг доминирующих классов (DDoS, DoS) до MAX_SAMPLES_PER_CLASS.
+        Редкие классы (BruteForce, Web-based) оставляем полностью — их и так мало.
+        Это лучше SMOTE для экстремального дисбаланса: не генерируем шум,
+        а просто убираем избыток доминирующих классов.
+        """
         counts = Counter(y_train)
-        majority = max(counts.values())
+        logger.info("Даунсэмплинг: порог %d записей на класс.", MAX_SAMPLES_PER_CLASS)
 
-        # 1% от мажоритарного класса минимальный порог представленности
-        target = max(int(majority * 0.05), 30_000)
+        indices = []
+        rng = np.random.default_rng(42)
 
-        strategy = {
-            cls: max(count, target)
-            for cls, count in counts.items()
-        }
-
-        logger.info("Oversampling: порог %d записей на класс.", target)
         for cls, count in sorted(counts.items()):
-            new_count = strategy[cls]
-            if new_count > count:
-                logger.info("  класс %d: %d -> %d", cls, count, new_count)
+            cls_indices = np.where(y_train == cls)[0]
+            if count > MAX_SAMPLES_PER_CLASS:
+                chosen = rng.choice(cls_indices, MAX_SAMPLES_PER_CLASS, replace=False)
+                logger.info(
+                    "  класс %d: %d -> %d (даунсэмплинг)",
+                    cls,
+                    count,
+                    MAX_SAMPLES_PER_CLASS,
+                )
+            else:
+                chosen = cls_indices
+                logger.info("  класс %d: %d (без изменений)", cls, count)
+            indices.append(chosen)
 
-        ros = SMOTE(sampling_strategy=strategy, random_state=42, k_neighbors=5)
-        x_bal, y_bal = ros.fit_resample(x_train, y_train)
+        all_indices = np.concatenate(indices)
+        rng.shuffle(all_indices)
+
+        x_bal = x_train[all_indices]
+        y_bal = y_train[all_indices]
 
         logger.info(
-            "После oversampling: %d строк (было %d).",
-            len(x_bal),
-            len(x_train),
+            "После даунсэмплинга: %d строк (было %d). Дисбаланс: %.1fx",
+            len(y_bal),
+            len(y_train),
+            max(Counter(y_bal).values()) / min(Counter(y_bal).values()),
         )
         return x_bal, y_bal
 
@@ -79,15 +92,13 @@ class Pipeline:
             f"{len(splits.x_test):,}",
         )
         logger.info(
-            "Признаков: %d | Классов: %d",
-            len(splits.feature_names),
-            splits.n_classes,
+            "Признаков: %d | Классов: %d", len(splits.feature_names), splits.n_classes
         )
 
         feature_names = list(splits.feature_names)
         classes = list(splits.label_encoder.classes_)
 
-        x_train_bal, y_train_bal = self._oversample(splits.x_train, splits.y_train)
+        x_train_bal, y_train_bal = self._downsample(splits.x_train, splits.y_train)
 
         logger.info("Обучение классификаторов.")
         clf_results: dict = {}
@@ -111,14 +122,10 @@ class Pipeline:
                 m = response.test_metrics
                 logger.info("Accuracy: %.4f", m["accuracy"])
                 logger.info("F1-score: %.4f", m["f1_score"])
-
                 clf_results[name] = {"status": "success", "test_metrics": m}
 
                 viz.confusion_matrix(
-                    response.y_test,
-                    response.y_pred,
-                    labels=classes,
-                    model_name=name,
+                    response.y_test, response.y_pred, labels=classes, model_name=name
                 )
                 viz.feature_importance(response.feature_importance, name)
 
