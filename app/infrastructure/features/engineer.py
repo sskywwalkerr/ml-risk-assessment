@@ -143,7 +143,8 @@ class FeatureEngineer(IFeatureEngineer):
             s = self._col(df, col)
             if s is None:
                 continue
-            mean, std = s.mean(), s.std()
+            mean = s.mean()
+            std = s.std()
             if pd.isna(mean) or pd.isna(std) or std == 0:
                 df[f"{col}_zcore"] = 0.0
             else:
