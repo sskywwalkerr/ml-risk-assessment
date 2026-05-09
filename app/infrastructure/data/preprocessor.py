@@ -1,17 +1,16 @@
 import logging
 from pathlib import Path
 
-import joblib  # type: ignore[import-untyped]
+import joblib
 import numpy as np
 import pandas as pd
 from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import LabelEncoder, RobustScaler
+from sklearn.preprocessing import LabelEncoder, StandardScaler
 
 from app.application.interfaces.preprocessor import DataSplits, IPreprocessor
 
 logger = logging.getLogger(__name__)
 
-# Колонки, которые не являются признаками
 _NON_FEATURE_COLS = {
     "label",
     "base_financial_loss",
@@ -26,15 +25,31 @@ _NON_FEATURE_COLS = {
 
 _ZSCORE_COLS = ("rate", "header_length", "flow_duration", "iat")
 
+# Порог клиппинга после масштабирования — убирает экстремальные выбросы
+# не ломая информацию о редких классах
+_CLIP_VALUE = 10.0
+
 
 class RobustPreprocessor(IPreprocessor):
-    """Очищает данные, масштабирует RobustScaler и разбивает на выборки."""
+    """
+    Предобработка с StandardScaler + клиппинг выбросов.
+
+    Почему не RobustScaler:
+      RobustScaler использует медиану и IQR. При дисбалансе 99:1
+      медиана и IQR определяются доминирующим классом (DDoS).
+      Признаки редких классов (BruteForce rst_count=9613) после
+      масштабирования получают значения ~961,300 — модель их не видела
+      при обучении и сваливается в DDoS по умолчанию.
+
+    StandardScaler использует mean/std по всей выборке, что даёт
+    более равномерное масштабирование. Клиппинг [-10, 10] убирает
+    оставшиеся выбросы без потери информации о классе.
+    """
 
     def __init__(self) -> None:
-        self._scaler: RobustScaler = RobustScaler()
+        self._scaler: StandardScaler = StandardScaler()
         self._encoder: LabelEncoder = LabelEncoder()
         self._feature_names: list[str] = []
-        # mean/std для каждого _ZSCORE_COLS — сохраняются на диск
         self._zscore_stats: dict[str, dict[str, float]] = {}
         self.clean_df: pd.DataFrame | None = None
         self.train_idx: np.ndarray = np.array([])
@@ -57,8 +72,7 @@ class RobustPreprocessor(IPreprocessor):
             list(self._encoder.classes_),
         )
 
-        # Вычисляем и сохраняем статистики z-score ДО feature engineering
-        # (engineer.py уже применил их к df, но нам нужны оригинальные mean/std)
+        # Сохраняем zscore статистики до скейлинга
         for col in _ZSCORE_COLS:
             if col in df.columns:
                 s = pd.to_numeric(df[col], errors="coerce").fillna(0.0)
@@ -77,25 +91,23 @@ class RobustPreprocessor(IPreprocessor):
         self._feature_names = x.columns.tolist()
         logger.info("Признаков: %d", len(self._feature_names))
 
+        # StandardScaler: (x - mean) / std
         x_scaled = self._scaler.fit_transform(x)
+
+        # Клиппинг: убираем экстремальные выбросы после масштабирования
+        # [-10, 10] покрывает 99.9%+ нормального распределения
+        x_scaled = np.clip(x_scaled, -_CLIP_VALUE, _CLIP_VALUE)
+        logger.info("Клиппинг выбросов: [%.1f, %.1f]", -_CLIP_VALUE, _CLIP_VALUE)
 
         idx = np.arange(len(x_scaled))
 
         idx_tmp, idx_test, x_tmp, x_test, y_tmp, y_test = train_test_split(
-            idx,
-            x_scaled,
-            y,
-            test_size=0.2,
-            random_state=42,
-            stratify=y,
+            idx, x_scaled, y,
+            test_size=0.2, random_state=42, stratify=y,
         )
         idx_train, idx_val, x_train, x_val, y_train, y_val = train_test_split(
-            idx_tmp,
-            x_tmp,
-            y_tmp,
-            test_size=0.125,
-            random_state=42,
-            stratify=y_tmp,
+            idx_tmp, x_tmp, y_tmp,
+            test_size=0.125, random_state=42, stratify=y_tmp,
         )
 
         self.train_idx = idx_train
@@ -115,28 +127,23 @@ class RobustPreprocessor(IPreprocessor):
         )
 
     def save(self, path: str) -> None:
-        """Сохраняет scaler, label_encoder, feature_names и zscore_stats."""
         p = Path(path)
         p.mkdir(parents=True, exist_ok=True)
         joblib.dump(self._scaler, p / "scaler.pkl")
         joblib.dump(self._encoder, p / "label_encoder.pkl")
         joblib.dump(self._feature_names, p / "feature_names.pkl")
         joblib.dump(self._zscore_stats, p / "zscore_stats.pkl")
+        # Сохраняем clip_value чтобы инференс знал о нём
+        joblib.dump(_CLIP_VALUE, p / "clip_value.pkl")
         logger.info("Сохранены zscore_stats для %d признаков", len(self._zscore_stats))
 
     def _clean(self, df: pd.DataFrame) -> pd.DataFrame:
-        """Удаляет inf, заполняет NaN медианой."""
         df = df.copy()
         num = df.select_dtypes(include=[np.number]).columns
-
         df[num] = df[num].replace([np.inf, -np.inf], np.nan)
-
-        # >50% числовых колонок — NaN → удалить строку
         df = df.dropna(thresh=int(len(num) * 0.5))
-
         for col in num:
             if df[col].isnull().any():
                 median = df[col].median()
                 df[col] = df[col].fillna(median if not np.isnan(median) else 0.0)
-
         return df

@@ -77,6 +77,7 @@ class CSVDataLoader(IDataLoader):
         data = pd.concat(frames, ignore_index=True)
         data.columns = [c.strip().lower() for c in data.columns]
 
+
         if "label" not in data.columns:
             raise DataReadError(
                 str(self._path), "Столбец 'label' не найден в наборе данных"
