@@ -15,7 +15,7 @@ CLASSIFIERS = ["xgboost"]
 REGRESSORS = ["xgboost_regressor"]
 
 
-MAX_SAMPLES_PER_CLASS = 500_000
+MAX_SAMPLES_PER_CLASS = 50_000
 
 
 class Pipeline:
