@@ -6,7 +6,7 @@ from app.application.interactors.train_classifier import TrainClassifierInteract
 from app.application.interactors.train_regressor import TrainRegressorInteractor
 from app.infrastructure.config import Config
 from app.infrastructure.data.csv_loader import CSVDataLoader
-from app.infrastructure.data.preprocessor import RobustPreprocessor
+from app.infrastructure.data.preprocessor import Preprocessor
 from app.infrastructure.features.engineer import FeatureEngineer
 from app.infrastructure.financial.calculator import RiskAssessor, RiskCalculator
 from app.infrastructure.models.lightgbm_model import LightGBMModel
@@ -32,7 +32,7 @@ class Container:
 
         self._loader = CSVDataLoader(config.data.path)
         self._engineer = FeatureEngineer()
-        self._preprocessor = RobustPreprocessor()
+        self._preprocessor = Preprocessor()
         self._repository = FileModelRepository(config.models.save_path)
         self._visualizer = Visualizer(config.results.path)
 
@@ -101,7 +101,7 @@ class Container:
             assessor=self._assessor,
         )
 
-    def preprocessor(self) -> RobustPreprocessor:
+    def preprocessor(self) -> Preprocessor:
         return self._preprocessor
 
     def visualizer(self) -> Visualizer:

@@ -33,7 +33,7 @@ _ZSCORE_COLS = (
 _CLIP_VALUE = 10.0  # максимальное отклонение (в сигмах)
 
 
-class RobustPreprocessor(IPreprocessor):
+class Preprocessor(IPreprocessor):
     def __init__(self) -> None:
         self._scaler: StandardScaler = (
             StandardScaler()
