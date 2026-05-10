@@ -97,7 +97,6 @@ class BaseModel(IExplainableModel):
             for i in idx
         }
 
-
     def save(self, path: str) -> None:
         """Сохраняет модель и имена признаков на диск."""
         p = Path(path)

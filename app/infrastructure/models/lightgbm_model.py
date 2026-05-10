@@ -1,3 +1,5 @@
+import logging
+from collections import Counter
 from typing import Any
 
 import lightgbm as lgb
@@ -6,10 +8,10 @@ from lightgbm import LGBMClassifier, LGBMRegressor
 
 from app.infrastructure.models.base import BaseModel
 
+logger = logging.getLogger(__name__)
+
 
 class LightGBMModel(BaseModel):
-    """LightGBM быстрый градиентный бустинг."""
-
     def __init__(
         self, task: str = "classification", params: dict[str, Any] | None = None
     ) -> None:
@@ -36,4 +38,25 @@ class LightGBMModel(BaseModel):
             lgb.early_stopping(stopping_rounds=50),
             lgb.log_evaluation(period=-1),
         ]
-        self._model.fit(x_train_df, y_train, eval_set=eval_set, callbacks=callbacks)
+
+        fit_kwargs: dict[str, Any] = {}
+
+        if self.task == "classification":
+            counts = Counter(y_train)
+            total = len(y_train)
+            n_classes = len(counts)
+            sample_weights = np.array(
+                [total / (n_classes * counts[y]) for y in y_train]
+            )
+            fit_kwargs["sample_weight"] = sample_weights
+            logger.info(
+                "LightGBM sample weights: min=%.2f, max=%.2f, ratio=%.1fx",
+                sample_weights.min(),
+                sample_weights.max(),
+                sample_weights.max() / sample_weights.min(),
+            )
+
+        if eval_set:
+            fit_kwargs["eval_set"] = eval_set
+
+        self._model.fit(x_train_df, y_train, callbacks=callbacks, **fit_kwargs)
