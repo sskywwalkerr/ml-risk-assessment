@@ -86,8 +86,13 @@ class Preprocessor(IPreprocessor):
         self._feature_names = x.columns.tolist()
         logger.info("Признаков: %d", len(self._feature_names))
 
-        x_scaled = self._scaler.fit_transform(x)  # все признаки к единому масштабу
+        x_scaled = self._scaler.fit_transform(
+            x
+        )  # все признаки к единому масштабу и создает единицу сигмы
+        # алгоритм сначала находит среднее для всей колонки, а потом вычитает это число из каждого значения в этой же колонке
+        # 0 это абсолютная норма
         x_scaled = np.clip(x_scaled, -_CLIP_VALUE, _CLIP_VALUE)  # от [-10,10]
+        # -10 и 10 тк редкие атаки могут проигнорироваться
         logger.info("Клиппинг выбросов: [%.1f, %.1f]", -_CLIP_VALUE, _CLIP_VALUE)
 
         idx = np.arange(len(x_scaled))
